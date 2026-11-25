@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicio de autenticación</title>
+    <style>
+        /* Estilos básicos de la página */
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+        .tarjeta {
+            width: 100%;
+            max-width: 380px;
+            margin: 16px;
+            padding: 28px;
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+        }
+        h1 { margin: 0 0 4px; font-size: 22px; }
+        .subtitulo { margin: 0 0 20px; font-size: 14px; color: #6b7280; }
+        .pestanas { display: flex; gap: 8px; margin-bottom: 20px; }
+        .pestana {
+            flex: 1;
+            padding: 10px;
+            border: 0;
+            border-radius: 8px;
+            background: #e5e7eb;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .pestana.activa { background: #2563eb; color: #ffffff; }
+        label { display: block; margin: 12px 0 4px; font-size: 13px; font-weight: bold; }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+        input:focus { outline: none; border-color: #2563eb; }
+        .boton {
+            width: 100%;
+            margin-top: 18px;
+            padding: 12px;
+            border: 0;
+            border-radius: 8px;
+            background: #2563eb;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .boton:disabled { background: #93c5fd; cursor: wait; }
+        .mensaje {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            display: none;
+        }
+        .mensaje.exito { display: block; background: #dcfce7; color: #166534; }
+        .mensaje.error { display: block; background: #fee2e2; color: #991b1b; }
+        .ayuda { margin-top: 18px; font-size: 12px; color: #6b7280; text-align: center; }
+        .oculto { display: none; }
+    </style>
+</head>
+<body>
+    <main class="tarjeta">
+        <h1>Servicio de autenticación</h1>
+        <p class="subtitulo">Registro e inicio de sesión (API REST en Java)</p>
+
+        <!-- Pestañas para cambiar entre iniciar sesión y registrarse -->
+        <div class="pestanas">
+            <button type="button" class="pestana activa" id="pestana-login">Iniciar sesión</button>
+            <button type="button" class="pestana" id="pestana-registro">Registrarse</button>
+        </div>
+
+        <!-- Formulario de inicio de sesión -->
+        <form id="form-login" data-ruta="/api/login" data-boton="Iniciar sesión">
+            <label for="login-usuario">Usuario</label>
+            <input id="login-usuario" name="usuario" type="text" autocomplete="username" required>
+            <label for="login-contrasena">Contraseña</label>
+            <input id="login-contrasena" name="contrasena" type="password" autocomplete="current-password" required>
+            <button type="submit" class="boton">Iniciar sesión</button>
+        </form>
+
+        <!-- Formulario de registro -->
+        <form id="form-registro" class="oculto" data-ruta="/api/registro" data-boton="Crear cuenta">
+            <label for="registro-usuario">Usuario (3 a 50 caracteres)</label>
+            <input id="registro-usuario" name="usuario" type="text" autocomplete="username" required minlength="3" maxlength="50">
+            <label for="registro-contrasena">Contraseña (mínimo 6 caracteres)</label>
+            <input id="registro-contrasena" name="contrasena" type="password" autocomplete="new-password" required minlength="6" maxlength="100">
+            <button type="submit" class="boton">Crear cuenta</button>
+        </form>
+
+        <!-- Aquí se muestra la respuesta del servicio -->
+        <div id="mensaje" class="mensaje" role="status" aria-live="polite"></div>
+
+        <p class="ayuda">Los datos se envían al servicio en <code>/api/login</code> y <code>/api/registro</code>.</p>
+    </main>
+
+    <script>
+        // Elementos de la página que se usan varias veces
+        const formLogin = document.getElementById('form-login');
+        const formRegistro = document.getElementById('form-registro');
+        const pestanaLogin = document.getElementById('pestana-login');
+        const pestanaRegistro = document.getElementById('pestana-registro');
+        const cajaMensaje = document.getElementById('mensaje');
+
+        /** Muestra un mensaje verde (éxito) o rojo (error) con el texto que devolvió el servicio. */
+        function mostrarMensaje(exito, texto) {
+            cajaMensaje.className = 'mensaje ' + (exito ? 'exito' : 'error');
+            cajaMensaje.textContent = texto; // textContent evita insertar HTML
+        }
+
+        /** Cambia entre el formulario de login y el de registro. */
+        function mostrarFormulario(verLogin) {
+            formLogin.classList.toggle('oculto', !verLogin);
+            formRegistro.classList.toggle('oculto', verLogin);
+            pestanaLogin.classList.toggle('activa', verLogin);
+            pestanaRegistro.classList.toggle('activa', !verLogin);
+            cajaMensaje.className = 'mensaje';
+        }
+
+        /** Envía usuario y contraseña al servicio y muestra su respuesta. */
+        async function enviarFormulario(evento) {
+            evento.preventDefault();
+            const formulario = evento.target;
+            const boton = formulario.querySelector('button[type="submit"]');
+
+            boton.disabled = true;
+            try {
+                const respuesta = await fetch(formulario.dataset.ruta, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        usuario: formulario.usuario.value.trim(),
+                        contrasena: formulario.contrasena.value
+                    })
+                });
+                const datos = await respuesta.json();
+                mostrarMensaje(datos.exito, datos.mensaje);
+                if (datos.exito) {
+                    formulario.contrasena.value = ''; // se borra la contraseña de la pantalla
+                }
+            } catch (error) {
+                mostrarMensaje(false, 'No se pudo conectar con el servicio.');
+            } finally {
+                boton.disabled = false;
+            }
+        }
+
+        pestanaLogin.addEventListener('click', () => mostrarFormulario(true));
+        pestanaRegistro.addEventListener('click', () => mostrarFormulario(false));
+        formLogin.addEventListener('submit', enviarFormulario);
+        formRegistro.addEventListener('submit', enviarFormulario);
+    </script>
+</body>
+</html>

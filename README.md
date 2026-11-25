@@ -22,7 +22,16 @@ Está hecho solo con el JDK (servidor `com.sun.net.httpserver`), sin librerías 
 
 Para solo compilar: `./scripts/compilar.sh`
 
-## Probar
+## Probar desde el navegador
+
+Con el servicio corriendo, abre **http://localhost:8080/**. Verás una pantalla con dos pestañas:
+
+- **Registrarse**: crea una cuenta nueva.
+- **Iniciar sesión**: muestra **"Autenticación satisfactoria."** en verde si los datos son correctos, o **"Error en la autenticación."** en rojo si no lo son.
+
+La página (`src/main/resources/web/index.html`) solo es un cliente: envía los datos a `/api/registro` y `/api/login` y muestra lo que responde el servicio.
+
+## Probar con scripts
 
 Con el servicio corriendo, en otra terminal:
 
@@ -30,7 +39,7 @@ Con el servicio corriendo, en otra terminal:
 ./scripts/probar.sh
 ```
 
-Ejecuta 10 pruebas (registro, duplicado, validaciones, login correcto e incorrecto, JSON mal formado...).
+Ejecuta 12 pruebas (registro, duplicado, validaciones, login correcto e incorrecto, JSON mal formado, ruta inexistente, página web...).
 También se puede probar con Postman o con `curl` manualmente (ver abajo).
 
 ## Diseño del servicio
@@ -44,6 +53,7 @@ Todas las respuestas son JSON con la forma `{"exito": true|false, "mensaje": "..
 | POST   | `/api/registro` | Crea un usuario nuevo        | `{"usuario":"ana","contrasena":"clave123"}`   |
 | POST   | `/api/login`    | Comprueba usuario y clave    | `{"usuario":"ana","contrasena":"clave123"}`   |
 | GET    | `/api/salud`    | Indica que el servicio vive  | (sin cuerpo)                                  |
+| GET    | `/`             | Página web de login/registro | (sin cuerpo; responde HTML)                   |
 
 ### Códigos de respuesta
 
@@ -53,6 +63,7 @@ Todas las respuestas son JSON con la forma `{"exito": true|false, "mensaje": "..
 | 201    | Registro correcto                                                   | Registro exitoso.                              |
 | 400    | Datos inválidos, campos faltantes o JSON mal formado                | Explica qué está mal                           |
 | 401    | Usuario inexistente **o** contraseña incorrecta                     | Error en la autenticación.                     |
+| 404    | La ruta no existe                                                   | Ruta no encontrada.                            |
 | 405    | Método HTTP no permitido en esa ruta                                | Método no permitido.                           |
 | 409    | El usuario ya está registrado                                       | El usuario ya existe.                          |
 | 413    | Cuerpo de la petición mayor a 4 KB                                  | La petición es demasiado grande.               |
@@ -157,6 +168,8 @@ proyecto/
 │   ├── RepositorioUsuarios.java    Guardado y búsqueda de usuarios
 │   ├── Usuario.java                Modelo de datos
 │   └── JsonSimple.java             Lectura y escritura de JSON
+├── src/main/resources/web/
+│   └── index.html                  Página web de login y registro
 ├── scripts/                        compilar.sh, ejecutar.sh, probar.sh
 ├── .gitignore
 └── README.md

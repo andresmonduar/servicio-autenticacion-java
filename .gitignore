@@ -1,12 +1,2 @@
-# Archivos generados al compilar
 out/
 *.class
-
-# Datos de usuarios creados al probar el servicio (incluyen hashes de contraseñas)
-datos/
-
-# Archivos de editores y del sistema
-.idea/
-.vscode/
-*.iml
-.DS_Store

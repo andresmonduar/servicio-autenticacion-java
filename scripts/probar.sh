@@ -25,3 +25,7 @@ llamar "7. Login con usuario inexistente (401)"      POST /api/login    "{\"usua
 llamar "8. Login sin contraseña (400)"               POST /api/login    "{\"usuario\":\"$USUARIO\"}"
 llamar "9. JSON mal formado (400)"                   POST /api/login    "{usuario: esto no es json"
 llamar "10. Método no permitido (405)"               GET  /api/login
+llamar "11. Ruta que no existe (404 en JSON)"        GET  /no_existe
+
+echo "--- 12. Página web de login (debe dar 200 y ser HTML)"
+curl -s -o /dev/null -w '    HTTP %{http_code}  tipo: %{content_type}\n' "$BASE/"

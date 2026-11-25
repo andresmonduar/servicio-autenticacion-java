@@ -3,6 +3,7 @@ package com.antobano.auth;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -17,7 +18,9 @@ import java.util.concurrent.Executors;
  *   <li>{@code POST /api/registro} - crea un usuario nuevo.</li>
  *   <li>{@code POST /api/login} - comprueba usuario y contraseña.</li>
  *   <li>{@code GET  /api/salud} - indica que el servicio está en línea.</li>
+ *   <li>{@code GET  /} - página web con los formularios de registro e inicio de sesión.</li>
  * </ul>
+ * Cualquier otra ruta responde 404 en JSON.
  */
 public class ServidorAuth {
 
@@ -54,6 +57,8 @@ public class ServidorAuth {
         servidor.createContext("/api/registro", intercambio -> procesarPost(intercambio, this::registrar));
         servidor.createContext("/api/login", intercambio -> procesarPost(intercambio, this::iniciarSesion));
         servidor.createContext("/api/salud", this::salud);
+        // La ruta "/" atiende la página de inicio y, para todo lo demás, el error 404.
+        servidor.createContext("/", this::raiz);
 
         // Varios hilos para atender peticiones a la vez.
         servidor.setExecutor(Executors.newFixedThreadPool(8));
@@ -108,6 +113,41 @@ public class ServidorAuth {
             return;
         }
         responder(intercambio, new Respuesta(200, true, "Servicio en línea."), null);
+    }
+
+    /**
+     * GET /: entrega la página web de login y registro (archivo web/index.html).
+     * Cualquier otra ruta que no exista devuelve 404 en formato JSON.
+     */
+    private void raiz(HttpExchange intercambio) throws IOException {
+        String ruta = intercambio.getRequestURI().getPath();
+        boolean esPaginaInicio = "/".equals(ruta) || "/index.html".equals(ruta);
+
+        if (!esPaginaInicio) {
+            responder(intercambio, new Respuesta(404, false, "Ruta no encontrada."), null);
+            return;
+        }
+        if (!"GET".equals(intercambio.getRequestMethod())) {
+            responder(intercambio, new Respuesta(405, false, "Método no permitido. Use GET."), "GET");
+            return;
+        }
+        try (InputStream archivo = ServidorAuth.class.getResourceAsStream("/web/index.html")) {
+            if (archivo == null) {
+                responder(intercambio, new Respuesta(404, false, "Página no encontrada."), null);
+                return;
+            }
+            byte[] pagina = archivo.readAllBytes();
+            intercambio.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+            intercambio.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
+            // La página solo puede cargar recursos propios y conectarse a este mismo servidor.
+            intercambio.getResponseHeaders().set("Content-Security-Policy",
+                    "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'");
+            intercambio.sendResponseHeaders(200, pagina.length);
+            try (OutputStream salida = intercambio.getResponseBody()) {
+                salida.write(pagina);
+            }
+            System.out.println("GET " + ruta + " -> 200");
+        }
     }
 
     // ------------------------------------------------------------------
